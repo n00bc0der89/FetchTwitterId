@@ -1,0 +1,10 @@
+{
+  "name": "twitteridfetch",
+  "version": "1.0.0",
+  "description": "",
+  "main": "fetchtweetids.js",
+  "dependencies": {
+    "twitter": "^1.4.0",
+    "fs":"0.0.1-security"
+  }
+}
