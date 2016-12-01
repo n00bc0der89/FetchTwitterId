@@ -13,15 +13,17 @@ const client = new Twitter({
 
 	var places = [];
 	
-		fs.readFile('ip/businesslist', 'utf8', function (err,data) {
+		fs.readFile('ip/testfile', 'utf8', function (err,data) {
 			  if (err) {
 			    	return console.log(err);
 			  }
 			  places = data.split("\n");
 			 // console.log(data);
 			  	getResult(0);
-		});
-	
+		}); 
+	//places = ["Asda Barking Superstore"];
+	//getResult(0);
+
 
 	function getResult(n)
 	{
@@ -36,69 +38,20 @@ const client = new Twitter({
 						try{
 						var obj = JSON.parse(response.body);
 						
-						var twitterobj = {twitterid:[],twittername:[],twitterhandle:[],location:[],description:[]};
-						var compl_string = "";
-						var twitter_id ="";
-						var twitter_name= "";
-						var twitter_handle = "";
-						var location="";
-						var description = "";
+						if(obj.length > 0)
+						{
+							var twitterobj = {twitterid:[],twittername:[],twitterhandle:[],location:[],description:[]};
+							var compl_string = "";
+							var twitter_id ="";
+							var twitter_name= "";
+							var twitter_handle = "";
+							var location="";
+							var description = "";
 							
 						
-						for(var i=0; i < obj.length; i++)
-						{
-						if((obj[i].location.includes("UK") || obj[i].location.includes("London") ))
-							{
-							//	var o = JSON.parse(obj[i]);
-							//	console.log(obj[i]);
-							var arr = places[n].split(' ');
-							if(arr.length == 1)
-							{
-								if(obj[i].name.search(places[n].replace(/\s/g,'')) > -1)
-								{
-								//	var str = obj[i].id + "," + obj[i].name + "," + obj[i].screen_name + "," + obj[i].location + "," + obj[i].description.replace(/,/g,'') + "\n";
-									twitterobj.twitterid.push(obj[i].id);
-									twitterobj.twittername.push(obj[i].name);
-									twitterobj.twitterhandle.push(obj[i].screen_name);
-									twitterobj.location.push(obj[i].location);
-									twitterobj.description.push(obj[i].description.replace(/,/g,''));
-								}
-							}
-							else
-							{
-								var flag =false;
-								
-								for(var m =0; m < arr.length; m++)
-								{
-									try{
-										if(obj[i].name.search(arr[m]) > -1)
-										{
-											flag =true;
-											break;
-										}
-									}catch(ex){console.log("Exception: " + ex);}
-								
-								}
-									
-								}
-								
-								if(flag)
-								{
-								
-								//	var str = obj[i].id + "," + obj[i].name + "," + obj[i].screen_name + "," + obj[i].location + "," + obj[i].description.replace(/,/g,'')  + "\n";
-									twitterobj.twitterid.push(obj[i].id);
-									twitterobj.twittername.push(obj[i].name);
-									twitterobj.twitterhandle.push(obj[i].screen_name);
-									twitterobj.location.push(obj[i].location);
-									twitterobj.description.push(obj[i].description.replace(/,/g,''));
-								
-								}
-								
-							}
+						 twitterobj = populateObj(twitterobj,obj,places[n]);
 						
-						
-						}
-						
+						//Logic to print to file
 							if(twitterobj.twitterid.length == 0) // No result found for search
 							{
 								twitter_name = places[n];
@@ -114,11 +67,11 @@ const client = new Twitter({
 									description += twitterobj.description[t] + "|";
 								}
 								
-							twitter_id = twitter_id.substring(0, twitter_id.length - 1);
-							twitter_name = twitter_name.substring(0, twitter_name.length - 1);
-							twitter_handle = twitter_handle.substring(0, twitter_handle.length - 1); 
-							location  = location.substring(0, location.length - 1);
-							description = description.substring(0, description.length - 1);
+									twitter_id = twitter_id.substring(0, twitter_id.length - 1);
+									twitter_name = twitter_name.substring(0, twitter_name.length - 1);
+									twitter_handle = twitter_handle.substring(0, twitter_handle.length - 1); 
+									location  = location.substring(0, location.length - 1);
+									description = description.substring(0, description.length - 1);
 							
 							}
 							
@@ -134,18 +87,124 @@ const client = new Twitter({
 							        return console.log(err);
 							    }
 						
-							}); 
+							});
+							getResult(n + 1);
+						}
+						else
+						{
+							//Complete string does not returns any twitter account. So substring and search again.
 							
+							var lastIndex = places[n].lastIndexOf(" ");
+							var plac = places[n].substring(0,lastIndex);
+							if(plac != "")
+							{
+								places[n] = plac;
+								getResult(n);
+							}
+							else{
+								compl_string = "" + "," +  places[n]+ "," + "" + "," + "" + "," + "";
+							fs.appendFile("op/twitterids.csv", compl_string, function(err) {
+							    if(err) {
+							        return console.log(err);
+							    }
 						
-						
+							});
+							getResult(n + 1);	
+							}
+							
+							
+						}
 						
 						
 						}
 						catch(v){console.log("Exception: " + v);}
-					getResult(n + 1);
+					
 					});
 				
 			}
 	
 	}
 	
+	
+	function populateObj(twitterobj,obj,place) //obj is array of objects matching business names
+	{
+		//Preference for location matching UK, London if no result found then take all
+		//Second Preference with name / screen name match
+		var pl = place.split(' '); 
+		
+		var objbyLoc = obj.filter(function(n)
+						{
+							if((n.location.includes("London") || n.location.includes("UK")) && ((n.name.toLowerCase().search(place.toLowerCase()) > -1 || n.screen_name.toLowerCase().search(place.replace(/\s/g,'').toLowerCase()) > -1)))
+							{
+								return n;
+								
+							}});
+		
+		if(objbyLoc.length > 0)
+		{
+			for(var m =0; m < objbyLoc.length; m++)
+			{
+				twitterobj.twitterid.push(objbyLoc[m].id);
+				twitterobj.twittername.push(objbyLoc[m].name);
+				twitterobj.twitterhandle.push(objbyLoc[m].screen_name);
+				twitterobj.location.push(objbyLoc[m].location);
+				twitterobj.description.push(objbyLoc[m].description.replace(/,/g,''));
+			}
+		}
+		else
+		{
+		
+				//Check Name /Screen Name 
+				var objbyLoc = obj.filter(function(n)
+						{
+							if(((n.name.toLowerCase().search(place.toLowerCase()) > -1 || n.screen_name.toLowerCase().search(place.replace(/\s/g,'').toLowerCase()) > -1)))
+							{
+								return n;
+								
+							}});
+			
+				if(objbyLoc.length > 0)
+				{
+					for(var m =0; m < objbyLoc.length; m++)
+					{
+						twitterobj.twitterid.push(objbyLoc[m].id);
+						twitterobj.twittername.push(objbyLoc[m].name);
+						twitterobj.twitterhandle.push(objbyLoc[m].screen_name);
+						twitterobj.location.push(objbyLoc[m].location);
+						twitterobj.description.push(objbyLoc[m].description.replace(/,/g,''));
+					}
+				}
+			
+			
+			
+		}
+	
+	if(objbyLoc.length == 0)
+	{
+		var objbyLocSplit = [];
+		for(var o= 0; o < pl.length; o++)
+			{
+			 objbyLocSplit = obj.filter(function(n){
+								if((n.location.includes("London") || n.location.includes("UK")) && ((n.name.toLowerCase().search(pl[o].toLowerCase()) > -1 || n.screen_name.toLowerCase().search(pl[o].replace(/\s/g,'').toLowerCase()) > -1)))
+								{
+									return n;
+									
+								}});
+								
+			if(objbyLocSplit.length > 0)
+			{
+				for(var m =0; m < objbyLocSplit.length; m++)
+					{
+						twitterobj.twitterid.push(objbyLocSplit[m].id);
+						twitterobj.twittername.push(objbyLocSplit[m].name);
+						twitterobj.twitterhandle.push(objbyLocSplit[m].screen_name);
+						twitterobj.location.push(objbyLocSplit[m].location);
+						twitterobj.description.push(objbyLocSplit[m].description.replace(/,/g,''));
+					}
+					break;
+			}
+			}
+	}
+		
+		return twitterobj;
+	}
